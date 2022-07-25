@@ -32,6 +32,15 @@ async function run(){
             res.send(plants);
         });
 
+        //GET EMAIL QUERY PLANTS INVENTORY ITEM
+        app.get('/allPlants', async(req, res) => {
+            const email = req.query.email;
+            const query = {email:email};
+            const cursor = plantCollections.find(query);
+            const plants = await cursor.toArray();
+            res.send(plants);
+        });
+
         //GET SINGLE PLANT INVENTORY ITEM
         app.get('/plant/:id', async(req, res)=>{
             const id = req.params.id;
@@ -46,13 +55,19 @@ async function run(){
             const result = await plantCollections.insertOne(item);
             res.send(result);
         });
+
+        //PLANT DELETE 
+        app.delete('/delete-plant/:id', async(req, res)=>{
+            const id = req.params.id;
+            const query = {_id:ObjectId(id)};
+            const plant =  await plantCollections.deleteOne(query);
+            res.send(plant);
+        });
         
         //PLANT QUANTITY UPDATE
         app.put('/plant/:id', async(req, res)=> {
             const id = req.params.id;
             const updateQuantity = req.body;
-
-            console.log("quantity",updateQuantity);
 
             const filter = {_id:ObjectId(id)};
             const options = {upsert : true};
@@ -76,12 +91,6 @@ async function run(){
 }
 run().catch(console.dir);
 
-
-
-
-app.get('/', (req, res)=> {
-    res.send('server ok');
-});
 
 app.listen(port, ()=> {
     console.log('Listing to port', port);
