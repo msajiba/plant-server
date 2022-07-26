@@ -43,18 +43,13 @@ async function run(){
         const plantCollections = client.db('product').collection('items');
         
         //GET PLANTS INVENTORY ITEM
-        app.get('/plants', verifyJWT, async(req, res) => {
+        app.get('/plants', async(req, res) => {
             const page = parseInt(req.query.page);
             const size = parseInt(req.query.size);
-            const email = req.query.email;
-            const decodedEmail = req.decoded.email;
-
-
 
             const query = {};
             const cursor = plantCollections.find(query);
 
-            if(email === decodedEmail){
                 let plants;
                 if(page || size){
                     plants = await cursor.skip(page*size).limit(size).toArray();
@@ -62,14 +57,8 @@ async function run(){
                 else{
                     plants = await cursor.toArray();
                 }
-    
-                res.send(plants);
-            }
-            else{
-                res.status(401).send({message: 'unAuthorization'})
-            }
-
-           
+                res.send(plants); 
+                
         });
 
         //GET PLANTS COUNT
