@@ -13,6 +13,24 @@ app.use(cors());
 app.use(express.json());
 
 
+//AUTHENTICATION VERIFY
+const verifyJWT = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if(!authHeader){
+        res.status(401).send({message:'unAuthorization'});
+    }
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded)=>{
+        if(err){
+            res.status(403),send({message:'Forbidden'});
+        }
+        req.decoded = decoded;
+        next();
+    })
+};
+
+
+
 //MONGODB
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.wz62svu.mongodb.net/?retryWrites=true&w=majority`;
@@ -26,19 +44,44 @@ async function run(){
         
         //GET PLANTS INVENTORY ITEM
         app.get('/plants', async(req, res) => {
+            const page = parseInt(req.query.page);
+            const size = parseInt(req.query.size);
+
             const query = {};
             const cursor = plantCollections.find(query);
-            const plants = await cursor.toArray();
+
+            let plants;
+            if(page || size){
+                plants = await cursor.skip(page*size).limit(size).toArray();
+            }
+            else{
+                plants = await cursor.toArray();
+            }
+
             res.send(plants);
         });
 
+        //GET PLANTS COUNT
+        app.get('/plantCount', async(req, res)=> {
+            const count = await plantCollections.estimatedDocumentCount();
+            res.send({count});
+        });
+
         //GET EMAIL QUERY PLANTS INVENTORY ITEM
-        app.get('/allPlants', async(req, res) => {
+        app.get('/allPlants', verifyJWT, async(req, res) => {
+
+           const decodeEmail = req.decoded.email;
             const email = req.query.email;
-            const query = {email:email};
-            const cursor = plantCollections.find(query);
-            const plants = await cursor.toArray();
-            res.send(plants);
+            if(email === decodeEmail){
+                const query = {email:email};
+                const cursor = plantCollections.find(query);
+                const plants = await cursor.toArray();
+                res.send(plants);
+            }
+            else{
+                res.status(401).send({message: 'unAuthorization'})
+            }
+            
         });
 
         //GET SINGLE PLANT INVENTORY ITEM
@@ -66,6 +109,7 @@ async function run(){
         
         //PLANT QUANTITY UPDATE
         app.put('/plant/:id', async(req, res)=> {
+
             const id = req.params.id;
             const updateQuantity = req.body;
 
@@ -85,6 +129,22 @@ async function run(){
             res.send({updateFinalQuantity,plant});
 
         });
+
+        //AUTHENTICATION
+       app.post('/login', async(req, res)=>{
+            const email = req.body.email;
+    
+            if(email){
+                const accessToken = jwt.sign({email: email}, process.env.ACCESS_TOKEN_SECRET, {expiresIn : '1d'});
+                res.status(200).send({accessToken:accessToken});
+            }
+            else{
+                res.status(401).send({message: 'unAuthorization'});
+            }
+       });
+
+
+
     
     }
     finally{}
